@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: Sport Platform API
+  version: 1.0.0
+  description: Управление соревнованиями
+servers:
+  - url: /
+
+tags:
+  - name: competition
+    description: Соревнования
+
+paths:
+  /api/competitions:
+    get:
+      tags: [competition]
+      operationId: getAllCompetitions
+      summary: Получить список соревнований
+      parameters:
+        - name: discipline
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [OPEN, CLOSED, IN_PROGRESS, COMPLETED]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompetitionResponse"
+    post:
+      tags: [competition]
+      operationId: createCompetition
+      summary: Создать соревнование
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompetitionRequest"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitionResponse"
+
+  /api/competitions/{id}:
+    get:
+      tags: [competition]
+      operationId: getCompetitionById
+      summary: Получить соревнование по ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitionResponse"
+        "404":
+          description: Не найдено
+    put:
+      tags: [competition]
+      operationId: updateCompetition
+      summary: Обновить соревнование
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCompetitionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitionResponse"
+        "404":
+          description: Не найдено
+    delete:
+      tags: [competition]
+      operationId: deleteCompetition
+      summary: Удалить соревнование
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Удалено
+        "404":
+          description: Не найдено
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  schemas:
+    CompetitionResponse:
+      type: object
+      required: [id, title, disciplineName, ownerLogin, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        datetime:
+          type: string
+          format: date-time
+          description: ISO-8601 with timezone
+        address:
+          type: string
+        disciplineName:
+          type: string
+        ownerLogin:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, CLOSED, IN_PROGRESS, COMPLETED]
+        participantCount:
+          type: integer
+
+    CreateCompetitionRequest:
+      type: object
+      required: [title, disciplineId, datetime]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        datetime:
+          type: string
+          format: date-time
+          description: ISO-8601 with timezone
+        address:
+          type: string
+          nullable: true
+        disciplineId:
+          type: integer
+          format: int64
+
+    UpdateCompetitionRequest:
+      type: object
+      required: [title, disciplineId, datetime]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        datetime:
+          type: string
+          format: date-time
+        address:
+          type: string
+          nullable: true
+        disciplineId:
+          type: integer
+          format: int64
