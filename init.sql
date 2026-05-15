@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS sport.competitions (
     id BIGSERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     datetime TIMESTAMPTZ NOT NULL,
+    tournament_size INTEGER,
+    required_team_size INTEGER,
     address VARCHAR(255),
     discipline_id BIGINT NOT NULL,
     owner_id BIGINT NOT NULL,
@@ -93,10 +95,12 @@ CREATE TABLE IF NOT EXISTS sport.match (
     FOREIGN KEY (next_match_id) REFERENCES sport.match(id) ON DELETE SET NULL
 );
 
--- ============================================================
--- Начальные данные (выполнятся при spring.sql.init.mode=always)
--- ============================================================
-
--- Роли по умолчанию
+-- Начальные данные
 INSERT INTO sport.roles (name) VALUES ('USER') ON CONFLICT (name) DO NOTHING;
+INSERT INTO sport.roles (name) VALUES ('ORGANIZER') ON CONFLICT (name) DO NOTHING;
 INSERT INTO sport.roles (name) VALUES ('ADMIN') ON CONFLICT (name) DO NOTHING;
+
+-- Дисциплины по умолчанию
+INSERT INTO sport.discipline (name) VALUES ('Футбол') ON CONFLICT (name) DO NOTHING;
+INSERT INTO sport.discipline (name) VALUES ('Теннис') ON CONFLICT (name) DO NOTHING;
+INSERT INTO sport.discipline (name) VALUES ('Баскетбол') ON CONFLICT (name) DO NOTHING;
