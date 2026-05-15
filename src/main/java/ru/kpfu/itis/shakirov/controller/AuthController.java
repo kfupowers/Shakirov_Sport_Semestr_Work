@@ -5,14 +5,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.validation.FieldError;
 import ru.kpfu.itis.shakirov.dto.RegistrationRequest;
 import ru.kpfu.itis.shakirov.service.AccountService;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -43,13 +44,31 @@ public class AuthController {
     @PostMapping("/register")
     public String register(@Valid @ModelAttribute("request") RegistrationRequest req,
                            BindingResult result, Model model) {
+        Map<String, String> fieldErrors = new HashMap<>();
         if (result.hasErrors()) {
-            Map<String, String> fieldErrors = result.getFieldErrors().stream()
+            fieldErrors = result.getFieldErrors().stream()
                     .collect(Collectors.toMap(FieldError::getField, e -> e.getDefaultMessage(), (m1, m2) -> m1));
+        }
+
+        if (!fieldErrors.isEmpty()) {
             model.addAttribute("errors", fieldErrors);
             return "register";
         }
-        accountService.register(req);
+
+        try {
+            accountService.register(req);
+        } catch (IllegalArgumentException ex) {
+            if (ex.getMessage().contains("Login")) {
+                fieldErrors.put("login", ex.getMessage());
+            } else if (ex.getMessage().contains("Email")) {
+                fieldErrors.put("email", ex.getMessage());
+            } else {
+                model.addAttribute("error", ex.getMessage());
+                return "register";
+            }
+            model.addAttribute("errors", fieldErrors);
+            return "register";
+        }
         return "redirect:/login?registered";
     }
 }

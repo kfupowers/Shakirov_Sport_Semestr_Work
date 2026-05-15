@@ -13,4 +13,8 @@ public interface CompetitionRepository extends JpaRepository<Competition, Long> 
 
     @Query("SELECT c FROM Competition c WHERE (SELECT COUNT(p) FROM Participation p WHERE p.competition.id = c.id) >= :minTeams")
     List<Competition> findCompetitionsWithMinTeams(@Param("minTeams") long minTeams);
+
+    @Query("SELECT c FROM Competition c WHERE c.status = 'OPEN' AND " +
+            "(SELECT COUNT(p) FROM Participation p WHERE p.competition = c) < :minTeams")
+    List<Competition> findOpenCompetitionsWithFewerTeamsThan(@Param("minTeams") int minTeams);
 }

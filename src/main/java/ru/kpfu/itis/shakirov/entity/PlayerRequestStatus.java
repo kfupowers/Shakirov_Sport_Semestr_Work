@@ -1,2 +1,5 @@
-package ru.kpfu.itis.shakirov.entity;public class PlayerRequestStatus {
+package ru.kpfu.itis.shakirov.entity;
+
+public enum PlayerRequestStatus {
+    OPEN, CLOSED
 }

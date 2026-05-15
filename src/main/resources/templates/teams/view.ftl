@@ -4,19 +4,30 @@
     <p>Капитан: ${team.captain.name} ${team.captain.surname}</p>
     <p>Статус: <#if team.active>Активна<#else>Неактивна</#if></p>
 
+    <#if user.id == team.captain.id>
+        <div class="mb-3">
+            <form action="/teams/${team.id}/<#if team.active>deactivate<#else>activate</#if>" method="post" class="d-inline">
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                <button type="submit" class="btn btn-<#if team.active>warning<#else>success</#if> btn-sm">
+                    <#if team.active>Сделать неактивной<#else>Активировать</#if>
+                </button>
+            </form>
+        </div>
+    </#if>
+
     <h4>Участники</h4>
     <ul id="membersList" class="list-group mb-3">
         <#list members as member>
             <li class="list-group-item d-flex justify-content-between align-items-center">
-                ${member.name} ${member.surname} (${member.login})
-                <#if user.id == team.captain.id && member.id != user.id>
+                ${member.name} ${member.surname}
+                <#if canModifyMembers && member.id != user.id>
                     <button class="btn btn-danger btn-sm remove-member" data-account-id="${member.id}">Удалить</button>
                 </#if>
             </li>
         </#list>
     </ul>
 
-    <#if user.id == team.captain.id>
+    <#if canModifyMembers>
         <h5>Добавить участника</h5>
         <form id="addMemberForm" class="row g-2">
             <div class="col-auto">

@@ -2,11 +2,13 @@ package ru.kpfu.itis.shakirov.dto;
 
 import lombok.Builder;
 import lombok.Data;
-import java.time.LocalDateTime;
+import java.io.Serializable;
 
 @Data
 @Builder
-public class CompetitionDto {
+public class CompetitionDto implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Long id;
     private String title;
     private String address;

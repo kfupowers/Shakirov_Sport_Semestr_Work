@@ -1,0 +1,49 @@
+### Переменные
+@baseUrl = http://localhost:8080/api
+@adminLogin = admin
+@adminPassword = admin
+@organizerLogin = organizer
+@organizerPassword = organizer
+
+### Аутентификация (получить CSRF-токен не требуется, если используем Basic Auth или отключен CSRF для API, но в вашем SecurityConfig CSRF включён. Для простоты тестов можно временно отключить CSRF для /api/**, или использовать Basic Auth и не обрабатывать CSRF. Предположим, вы разрешили Basic Auth для API.)
+# Авторизуемся под организатором для создания соревнования
+POST {{baseUrl}}/competitions
+Content-Type: application/json
+Authorization: Basic {{organizerLogin}} {{organizerPassword}}
+
+{
+  "title": "Test Tournament",
+  "datetime": "2026-06-01T18:00:00+03:00",
+  "address": "Moscow",
+  "disciplineId": 1,
+  "tournamentSize": 8,
+  "requiredTeamSize": 1
+}
+
+### Получить список соревнований
+GET {{baseUrl}}/competitions
+Accept: application/json
+
+### Фильтр по дисциплине и статусу
+GET {{baseUrl}}/competitions?discipline=Футбол&status=OPEN
+Accept: application/json
+
+### Получить одно соревнование
+GET {{baseUrl}}/competitions/1
+Accept: application/json
+
+### Обновить соревнование (только владелец или админ)
+PUT {{baseUrl}}/competitions/1
+Content-Type: application/json
+Authorization: Basic {{organizerLogin}} {{organizerPassword}}
+
+{
+  "title": "Updated Tournament",
+  "datetime": "2026-06-02T20:00:00+03:00",
+  "address": "St. Petersburg",
+  "disciplineId": 2
+}
+
+### Удалить соревнование (владелец или админ)
+DELETE {{baseUrl}}/competitions/1
+Authorization: Basic {{organizerLogin}} {{organizerPassword}}

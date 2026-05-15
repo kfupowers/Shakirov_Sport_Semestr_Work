@@ -2,7 +2,7 @@
 <@l.page title="Соревнования">
     <h2>Соревнования</h2>
     <form method="get" action="/competitions" class="row g-3 mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <select name="discipline" class="form-select">
                 <option value="">Все дисциплины</option>
                 <#list disciplines as d>
@@ -10,7 +10,7 @@
                 </#list>
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <select name="status" class="form-select">
                 <option value="">Все статусы</option>
                 <option value="OPEN" <#if currentStatus?? && currentStatus == "OPEN">selected</#if>>Открыт</option>
@@ -18,7 +18,11 @@
                 <option value="COMPLETED" <#if currentStatus?? && currentStatus == "COMPLETED">selected</#if>>Завершён</option>
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <input type="text" name="city" class="form-control" placeholder="Город"
+                   value="${currentCity!''}">
+        </div>
+        <div class="col-md-3">
             <button type="submit" class="btn btn-outline-primary">Фильтровать</button>
         </div>
     </form>

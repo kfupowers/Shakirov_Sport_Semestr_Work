@@ -1,14 +1,54 @@
 version: "3.8"
 
 services:
+  app:
+    build: .
+    container_name: sportplatform-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/sport
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: teamwork.tf
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: sportplatform-db
+    environment:
+      POSTGRES_DB: sport
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: teamwork.tf
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_sport:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sport"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: sportplatform-redis
     ports:
       - "6380:6379"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data_sport:

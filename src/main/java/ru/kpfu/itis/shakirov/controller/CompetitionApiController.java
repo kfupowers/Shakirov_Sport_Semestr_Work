@@ -10,13 +10,10 @@ import ru.kpfu.itis.shakirov.api.generated.api.CompetitionApi;
 import ru.kpfu.itis.shakirov.api.generated.dto.*;
 import ru.kpfu.itis.shakirov.dto.CompetitionRequest;
 import ru.kpfu.itis.shakirov.entity.Account;
-import ru.kpfu.itis.shakirov.entity.Competition;
-import ru.kpfu.itis.shakirov.entity.CompetitionStatus;
 import ru.kpfu.itis.shakirov.security.AccountUserDetails;
 import ru.kpfu.itis.shakirov.service.AccountService;
 import ru.kpfu.itis.shakirov.service.CompetitionService;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 
 @RestController
@@ -29,50 +26,32 @@ public class CompetitionApiController implements CompetitionApi {
     @Override
     public ResponseEntity<List<CompetitionResponse>> getAllCompetitions(
             @RequestParam(required = false) String discipline,
-            @RequestParam(required = false) String status) {
-        CompetitionStatus competitionStatus = status != null
-                ? CompetitionStatus.valueOf(status.toUpperCase()) : null;
-        List<Competition> comps = competitionService.findByFilters(discipline, competitionStatus);
-        List<CompetitionResponse> response = comps.stream()
-                .map(this::toResponse)
-                .toList();
-        return ResponseEntity.ok(response);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String city) {
+        List<CompetitionResponse> responses = competitionService.findResponsesByFilters(discipline, status, city);
+        return ResponseEntity.ok(responses);
     }
 
     @Override
     public ResponseEntity<CompetitionResponse> getCompetitionById(Long id) {
-        Competition c = competitionService.getById(id);
-        return ResponseEntity.ok(toResponse(c));
+        CompetitionResponse response = competitionService.getResponseById(id);
+        return ResponseEntity.ok(response);
     }
 
     @Override
     public ResponseEntity<CompetitionResponse> createCompetition(CreateCompetitionRequest request) {
         Account owner = getCurrentUser();
-        CompetitionRequest compReq = new CompetitionRequest();
-        compReq.setTitle(request.getTitle());
-        if (request.getDatetime() != null) {
-            compReq.setDatetime(request.getDatetime().toLocalDateTime());
-        }
-        compReq.setAddress(request.getAddress());
-        compReq.setDisciplineId(request.getDisciplineId());
-
-        Competition created = competitionService.create(compReq, owner);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(created));
+        CompetitionRequest compReq = toCompetitionRequest(request);
+        CompetitionResponse response = competitionService.createResponse(compReq, owner);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Override
     public ResponseEntity<CompetitionResponse> updateCompetition(Long id, UpdateCompetitionRequest request) {
         Account updater = getCurrentUser();
-        CompetitionRequest compReq = new CompetitionRequest();
-        compReq.setTitle(request.getTitle());
-        if (request.getDatetime() != null) {
-            compReq.setDatetime(request.getDatetime().toLocalDateTime());
-        }
-        compReq.setAddress(request.getAddress());
-        compReq.setDisciplineId(request.getDisciplineId());
-
-        Competition updated = competitionService.update(id, compReq, updater);
-        return ResponseEntity.ok(toResponse(updated));
+        CompetitionRequest compReq = toCompetitionRequest(request);
+        CompetitionResponse response = competitionService.updateResponse(id, compReq, updater);
+        return ResponseEntity.ok(response);
     }
 
     @Override
@@ -90,21 +69,29 @@ public class CompetitionApiController implements CompetitionApi {
         throw new IllegalStateException("User not authenticated");
     }
 
-    private CompetitionResponse toResponse(Competition c) {
-        CompetitionResponse response = new CompetitionResponse(
-                c.getId(),
-                c.getTitle(),
-                c.getDiscipline().getName(),
-                c.getOwner().getLogin(),
-                CompetitionResponse.StatusEnum.fromValue(c.getStatus().name())
-        );
-        
-        response.setAddress(c.getAddress());
-        if (c.getDatetime() != null) {
-            response.setDatetime(c.getDatetime().toOffsetDateTime());
+    private CompetitionRequest toCompetitionRequest(CreateCompetitionRequest request) {
+        CompetitionRequest req = new CompetitionRequest();
+        req.setTitle(request.getTitle());
+        if (request.getDatetime() != null) {
+            req.setDatetime(request.getDatetime().toLocalDateTime());
         }
-        response.setParticipantCount(c.getParticipations().size());
+        req.setAddress(request.getAddress());
+        req.setDisciplineId(request.getDisciplineId());
+        req.setTournamentSize(request.getTournamentSize());
+        req.setRequiredTeamSize(request.getRequiredTeamSize());
+        return req;
+    }
 
-        return response;
+    private CompetitionRequest toCompetitionRequest(UpdateCompetitionRequest request) {
+        CompetitionRequest req = new CompetitionRequest();
+        req.setTitle(request.getTitle());
+        if (request.getDatetime() != null) {
+            req.setDatetime(request.getDatetime().toLocalDateTime());
+        }
+        req.setAddress(request.getAddress());
+        req.setDisciplineId(request.getDisciplineId());
+        req.setTournamentSize(request.getTournamentSize());
+        req.setRequiredTeamSize(request.getRequiredTeamSize());
+        return req;
     }
 }

@@ -46,4 +46,7 @@ public class Competition {
 
     @OneToMany(mappedBy = "competition", cascade = CascadeType.ALL)
     private List<Participation> participations = new ArrayList<>();
+
+    private Integer tournamentSize;
+    private Integer requiredTeamSize;
 }

@@ -24,6 +24,7 @@ public class DataInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (roleRepo.count() == 0) {
             roleRepo.save(new Role(null, "USER"));
+            roleRepo.save(new Role(null, "ORGANIZER"));
             roleRepo.save(new Role(null, "ADMIN"));
             log.info("Roles initialized");
         }

@@ -14,16 +14,26 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/teams">Мои команды</a>
                         </li>
+                    </#if>
+                    <#if user?? && (user.authorities?seq_contains('ROLE_ORGANIZER') || user.authorities?seq_contains('ROLE_ADMIN'))>
                         <li class="nav-item">
                             <a class="nav-link" href="/competitions/new">Создать соревнование</a>
                         </li>
                     </#if>
+                    <#if user??>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/profile">Профиль</a>
+                        </li>
+                    </#if>
+                    <#if user?? && user.authorities?seq_contains('ROLE_ADMIN')>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/admin">Админ-панель</a>
+                        </li>
+                    </#if>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/players/search">Поиск игроков</a>
+                    </li>
                 </ul>
-                <!-- Форма быстрого поиска соревнований (AJAX) -->
-                <form class="d-flex me-3" id="searchForm" onsubmit="return false;">
-                    <input class="form-control me-2" type="search" id="searchInput" placeholder="Поиск..." aria-label="Search">
-                    <div id="searchResults" class="dropdown-menu" style="display: none;"></div>
-                </form>
                 <div class="navbar-nav">
                     <#if user??>
                         <span class="nav-link text-light">${user.name} ${user.surname}</span>

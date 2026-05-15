@@ -2,7 +2,6 @@
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
 
-
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
 
@@ -23,12 +22,20 @@
                         return response.json();
                     })
                     .then(data => {
+                        searchResults.innerHTML = '';
                         if (data.length === 0) {
-                            searchResults.innerHTML = '<div class="dropdown-item text-muted">Ничего не найдено</div>';
+                            const noResults = document.createElement('div');
+                            noResults.className = 'dropdown-item text-muted';
+                            noResults.textContent = 'Ничего не найдено';
+                            searchResults.appendChild(noResults);
                         } else {
-                            searchResults.innerHTML = data.map(comp =>
-                                `<a class="dropdown-item" href="/competitions/${comp.id}">${comp.title} (${comp.disciplineName})</a>`
-                            ).join('');
+                            data.forEach(comp => {
+                                const link = document.createElement('a');
+                                link.className = 'dropdown-item';
+                                link.href = '/competitions/' + comp.id;
+                                link.textContent = comp.title + ' (' + comp.disciplineName + ')';
+                                searchResults.appendChild(link);
+                            });
                         }
                         searchResults.style.display = 'block';
                     })
@@ -48,15 +55,25 @@
 
     const originalFetch = window.fetch;
     window.fetch = function(input, init = {}) {
-        if (init.headers === undefined) {
+        if (!init.headers) {
             init.headers = {};
         }
-        if (!(init.body instanceof FormData)) {
-            init.headers['Content-Type'] = init.headers['Content-Type'] || 'application/x-www-form-urlencoded';
-        }
+
         if (csrfToken && csrfHeader) {
             init.headers[csrfHeader] = csrfToken;
         }
+
+        const method = (init.method || 'GET').toUpperCase();
+        const hasBody = init.body !== undefined && init.body !== null;
+        const needsContentType = hasBody && method !== 'GET' && method !== 'HEAD';
+
+        if (needsContentType && !init.headers['Content-Type']) {
+            if (init.body instanceof FormData) {
+            } else {
+                init.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+        }
+
         return originalFetch.call(window, input, init);
     };
 })();

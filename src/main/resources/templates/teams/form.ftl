@@ -8,7 +8,7 @@
             <input type="text" class="form-control" id="name" name="name" value="${(team.name)!''}" required>
         </div>
         <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="active" name="active" <#if team.active>checked</#if>>
+            <input type="checkbox" class="form-check-input" id="active" name="active" <#if (team.active)!false>checked</#if>>
             <label class="form-check-label" for="active">Активна</label>
         </div>
         <button type="submit" class="btn btn-primary">Сохранить</button>

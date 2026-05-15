@@ -24,6 +24,9 @@ public class SecurityConfig {
                                 "/api.yaml",
                                 "/swagger-ui/**"
                         ).permitAll()
+                        .requestMatchers("/competitions/new").hasRole("ORGANIZER")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/").permitAll())

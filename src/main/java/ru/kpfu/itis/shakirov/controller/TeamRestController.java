@@ -9,6 +9,8 @@ import ru.kpfu.itis.shakirov.security.AccountUserDetails;
 import ru.kpfu.itis.shakirov.service.AccountService;
 import ru.kpfu.itis.shakirov.service.TeamService;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/teams/{teamId}/members")
 @RequiredArgsConstructor
@@ -16,6 +18,12 @@ public class TeamRestController {
 
     private final TeamService teamService;
     private final AccountService accountService;
+
+    @GetMapping
+    public ResponseEntity<List<Account>> getMembers(@PathVariable Long teamId) {
+        List<Account> members = teamService.getMembers(teamId);
+        return ResponseEntity.ok(members);
+    }
 
     @PostMapping
     public ResponseEntity<String> addMember(@PathVariable Long teamId,

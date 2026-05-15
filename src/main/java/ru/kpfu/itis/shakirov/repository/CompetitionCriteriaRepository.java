@@ -16,19 +16,29 @@ public class CompetitionCriteriaRepository {
     @PersistenceContext
     private EntityManager em;
 
-    public List<Competition> findByFilters(String disciplineName, CompetitionStatus status) {
+    public List<Competition> findByFilters(String disciplineName, CompetitionStatus status, String city) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Competition> cq = cb.createQuery(Competition.class);
         Root<Competition> root = cq.from(Competition.class);
         List<Predicate> predicates = new ArrayList<>();
-        if (disciplineName != null) {
+
+        if (disciplineName != null && !disciplineName.isBlank()) {
             Join<Competition, Discipline> disc = root.join("discipline");
             predicates.add(cb.equal(disc.get("name"), disciplineName));
         }
         if (status != null) {
             predicates.add(cb.equal(root.get("status"), status));
         }
-        cq.where(predicates.toArray(new Predicate[0]));
+        if (city != null && !city.isBlank()) {
+            predicates.add(cb.and(
+                    cb.isNotNull(root.get("address")),
+                    cb.like(cb.lower(root.get("address")), "%" + city.toLowerCase() + "%")
+            ));
+        }
+
+        if (!predicates.isEmpty()) {
+            cq.where(predicates.toArray(new Predicate[0]));
+        }
         return em.createQuery(cq).getResultList();
     }
 }

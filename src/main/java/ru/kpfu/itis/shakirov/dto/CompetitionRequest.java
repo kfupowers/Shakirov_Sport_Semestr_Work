@@ -1,11 +1,10 @@
 package ru.kpfu.itis.shakirov.dto;
 
-import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.springframework.format.annotation.DateTimeFormat;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -13,13 +12,19 @@ public class CompetitionRequest {
     @NotBlank
     private String title;
 
-    @NotNull(message = "Дата обязательна")
-    @FutureOrPresent(message = "Дата должна быть в будущем или настоящем")
-    @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @NotNull
+    @Future(message = "Дата начала должна быть в будущем")
     private LocalDateTime datetime;
 
+    @NotBlank(message = "Адрес не может быть пустым")
     private String address;
 
     @NotNull
     private Long disciplineId;
+
+    @NotNull @Min(2)
+    private Integer tournamentSize;
+
+    @NotNull @Min(1)
+    private Integer requiredTeamSize;
 }

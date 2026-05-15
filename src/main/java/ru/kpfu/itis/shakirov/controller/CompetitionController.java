@@ -7,21 +7,20 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import ru.kpfu.itis.shakirov.dto.CompetitionDto;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.kpfu.itis.shakirov.dto.CompetitionRequest;
-import ru.kpfu.itis.shakirov.entity.*;
+import ru.kpfu.itis.shakirov.dto.CompetitionViewDto;
+import ru.kpfu.itis.shakirov.entity.Account;
+import ru.kpfu.itis.shakirov.entity.CompetitionStatus;
 import ru.kpfu.itis.shakirov.repository.DisciplineRepository;
 import ru.kpfu.itis.shakirov.security.AccountUserDetails;
 import ru.kpfu.itis.shakirov.service.AccountService;
 import ru.kpfu.itis.shakirov.service.CompetitionService;
 import ru.kpfu.itis.shakirov.service.MatchService;
 import ru.kpfu.itis.shakirov.service.ParticipationService;
-import ru.kpfu.itis.shakirov.service.TeamService;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -31,41 +30,39 @@ import java.util.stream.Collectors;
 public class CompetitionController {
     private final CompetitionService competitionService;
     private final DisciplineRepository disciplineRepo;
-    private final TeamService teamService;
     private final ParticipationService participationService;
-    private final MatchService matchService;
     private final AccountService accountService;
+    private final MatchService matchService;
 
     @GetMapping
     public String list(@RequestParam(required = false) String discipline,
-                       @RequestParam(required = false) CompetitionStatus status,
+                       @RequestParam(required = false) String status,
+                       @RequestParam(required = false) String city,
                        Model model) {
-        List<Competition> comps = competitionService.findByFilters(discipline, status);
-
-        List<CompetitionDto> dtoList = comps.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-
-        model.addAttribute("competitions", dtoList);
+        model.addAttribute("competitions", competitionService.findDtosByFilters(discipline, status, city));
         model.addAttribute("disciplines", disciplineRepo.findAll());
         model.addAttribute("currentDiscipline", discipline);
-        model.addAttribute("currentStatus", status != null ? status.name() : null);
+        model.addAttribute("currentStatus", status);
+        model.addAttribute("currentCity", city);
         return "competition/list";
     }
 
     @GetMapping("/{id}")
     public String view(@PathVariable Long id, Model model,
                        @AuthenticationPrincipal AccountUserDetails user) {
-        Competition comp = competitionService.getById(id);
-        List<Team> userTeams = teamService.getTeamsByCaptain(user.getId());
-        List<Participation> participations = participationService.findByCompetitionId(id);
-        List<Match> matches = matchService.findByCompetitionIdOrderByRoundAsc(id);
-        model.addAttribute("comp", comp);
-        model.addAttribute("userTeams", userTeams);
-        model.addAttribute("participations", participations);
-        model.addAttribute("matches", matches);
-        model.addAttribute("formattedDatetime",
-                comp.getDatetime().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+        CompetitionViewDto viewDto = competitionService.getViewDto(id, user);
+        model.addAttribute("comp", viewDto.getCompetition());
+        model.addAttribute("userTeams", viewDto.getUserTeams());
+        model.addAttribute("participations", viewDto.getParticipations());
+        model.addAttribute("matches", viewDto.getMatches());
+        model.addAttribute("formattedDatetime", viewDto.getFormattedDatetime());
+
+        boolean isOwner = viewDto.getCompetition().getOwner().getId().equals(user.getId());
+        boolean isAdmin = user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        model.addAttribute("isOwner", isOwner);
+        model.addAttribute("isAdmin", isAdmin);
+
         return "competition/view";
     }
 
@@ -83,30 +80,38 @@ public class CompetitionController {
                          BindingResult result,
                          @AuthenticationPrincipal AccountUserDetails user,
                          Model model) {
-        String datetimeStr = (String) result.getFieldValue("datetime");
+        result.getFieldErrors().stream()
+                .filter(e -> e.getCodes() != null && Arrays.asList(e.getCodes()).contains("Future"))
+                .forEach(e -> {
+                    if (!"datetime".equals(e.getField())) {
+                        result.addError(new org.springframework.validation.FieldError(
+                                "competition", "datetime", e.getDefaultMessage()));
+                    }
+                });
 
         if (result.hasErrors()) {
-            prepareErrorModel(model, result, req, null, datetimeStr);
+            prepareErrorModel(model, result, req, null);
             return "competition/form";
         }
         Account owner = accountService.getAccountFromUserDetails(user);
-        competitionService.create(req, owner);
+        try {
+            competitionService.create(req, owner);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            model.addAttribute("error", e.getMessage());
+            prepareErrorModel(model, result, req, null);
+            return "competition/form";
+        }
         return "redirect:/competitions";
     }
 
     @GetMapping("/{id}/edit")
     public String editForm(@PathVariable Long id, Model model) {
-        Competition comp = competitionService.getById(id);
-        CompetitionRequest req = new CompetitionRequest();
-        req.setTitle(comp.getTitle());
-        req.setDatetime(comp.getDatetime().toLocalDateTime());
-        req.setAddress(comp.getAddress());
-        req.setDisciplineId(comp.getDiscipline().getId());
+        CompetitionRequest req = competitionService.getCompetitionRequestForEdit(id);
         model.addAttribute("competition", req);
         model.addAttribute("disciplines", disciplineRepo.findAll());
         model.addAttribute("competitionId", id);
         model.addAttribute("formattedDatetime",
-                comp.getDatetime().toLocalDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")));
+                req.getDatetime() != null ? req.getDatetime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")) : null);
         return "competition/form";
     }
 
@@ -116,45 +121,116 @@ public class CompetitionController {
                          BindingResult result,
                          @AuthenticationPrincipal AccountUserDetails user,
                          Model model) {
-        String datetimeStr = (String) result.getFieldValue("datetime");
+        result.getFieldErrors().stream()
+                .filter(e -> e.getCodes() != null && Arrays.asList(e.getCodes()).contains("Future"))
+                .forEach(e -> {
+                    if (!"datetime".equals(e.getField())) {
+                        result.addError(new org.springframework.validation.FieldError(
+                                "competition", "datetime", e.getDefaultMessage()));
+                    }
+                });
+
         if (result.hasErrors()) {
-            prepareErrorModel(model, result, req, id, datetimeStr);
+            prepareErrorModel(model, result, req, id);
             return "competition/form";
         }
         Account updater = accountService.getAccountFromUserDetails(user);
-        ZonedDateTime zoned = req.getDatetime().atZone(ZoneId.systemDefault());
-        competitionService.update(id, req, updater);
+        try {
+            competitionService.update(id, req, updater);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            model.addAttribute("error", e.getMessage());
+            prepareErrorModel(model, result, req, id);
+            return "competition/form";
+        }
         return "redirect:/competitions/" + id;
     }
 
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id,
-                         @AuthenticationPrincipal AccountUserDetails user) {
+                         @AuthenticationPrincipal AccountUserDetails user,
+                         RedirectAttributes redirectAttributes) {
         Account deleter = accountService.getAccountFromUserDetails(user);
-        competitionService.delete(id, deleter);
+        try {
+            competitionService.delete(id, deleter);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/competitions/" + id;
+        }
         return "redirect:/competitions";
     }
 
     @PostMapping("/{id}/register")
     public String registerTeam(@PathVariable Long id,
                                @RequestParam Long teamId,
-                               @AuthenticationPrincipal AccountUserDetails user) {
+                               @AuthenticationPrincipal AccountUserDetails user,
+                               RedirectAttributes redirectAttributes) {
         Account captain = accountService.getAccountFromUserDetails(user);
-        participationService.registerTeam(id, teamId, captain);
+        try {
+            participationService.registerTeam(id, teamId, captain);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/competitions/" + id;
+        }
+        return "redirect:/competitions/" + id;
+    }
+
+    @PostMapping("/{id}/unregister")
+    public String unregisterTeam(@PathVariable Long id,
+                                 @RequestParam Long teamId,
+                                 @AuthenticationPrincipal AccountUserDetails user,
+                                 RedirectAttributes redirectAttributes) {
+        Account captain = accountService.getAccountFromUserDetails(user);
+        try {
+            participationService.unregisterTeam(id, teamId, captain);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/competitions/" + id;
+        }
+        return "redirect:/competitions/" + id;
+    }
+
+    @PostMapping("/{id}/start")
+    public String startTournament(@PathVariable Long id,
+                                  @AuthenticationPrincipal AccountUserDetails user,
+                                  RedirectAttributes redirectAttributes) {
+        Account organizer = accountService.getAccountFromUserDetails(user);
+        try {
+            competitionService.startTournament(id, organizer);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/competitions/" + id;
+        }
+        return "redirect:/competitions/" + id;
+    }
+
+    @PostMapping("/{id}/matches/{matchId}/result")
+    public String setMatchResult(@PathVariable Long id,
+                                 @PathVariable Long matchId,
+                                 @RequestParam Integer score1,
+                                 @RequestParam Integer score2,
+                                 @RequestParam(required = false) Long winnerTeamId,
+                                 @AuthenticationPrincipal AccountUserDetails user,
+                                 RedirectAttributes redirectAttributes) {
+        Account updater = accountService.getAccountFromUserDetails(user);
+        try {
+            matchService.setResult(id, matchId, score1, score2, winnerTeamId, updater);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/competitions/" + id;
+        }
         return "redirect:/competitions/" + id;
     }
 
     private void prepareErrorModel(Model model, BindingResult result,
-                                   CompetitionRequest req, Long competitionId,
-                                   String datetimeStr) {
+                                   CompetitionRequest req, Long competitionId) {
         model.addAttribute("disciplines", disciplineRepo.findAll());
         model.addAttribute("competitionId", competitionId);
         model.addAttribute("formattedDatetime",
-                (datetimeStr != null && !datetimeStr.isBlank()) ? datetimeStr : null);
+                req.getDatetime() != null ? req.getDatetime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")) : null);
 
         Map<String, String> fieldErrors = result.getFieldErrors().stream()
                 .collect(Collectors.toMap(
-                        org.springframework.validation.FieldError::getField,
+                        e -> e.getField(),
                         e -> e.getDefaultMessage() != null ? e.getDefaultMessage() : "Некорректное значение",
                         (m1, m2) -> m1));
         if (result.hasGlobalErrors()) {
@@ -164,18 +240,5 @@ public class CompetitionController {
             fieldErrors.put("global", globalMsg);
         }
         model.addAttribute("errors", fieldErrors);
-    }
-
-    private CompetitionDto toDto(Competition c) {
-        return CompetitionDto.builder()
-                .id(c.getId())
-                .title(c.getTitle())
-                .address(c.getAddress())
-                .disciplineName(c.getDiscipline().getName())
-                .ownerLogin(c.getOwner().getLogin())
-                .status(c.getStatus().name())
-                .participantCount(c.getParticipations().size())
-                .formattedDatetime(c.getDatetime().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
-                .build();
     }
 }

@@ -9,7 +9,7 @@
             <#if logoutMessage??>
                 <div class="alert alert-success">${logoutMessage}</div>
             </#if>
-            <form action="/login" method="post"> ...
+            <form action="/login" method="post">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
                 <div class="mb-3">
                     <label for="username" class="form-label">Логин</label>

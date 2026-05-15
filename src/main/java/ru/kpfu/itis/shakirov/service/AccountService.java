@@ -31,6 +31,9 @@ public class AccountService {
         if (accountRepo.findByLogin(request.getLogin()).isPresent()) {
             throw new IllegalArgumentException("Login already taken");
         }
+        if (accountRepo.findByEmail(request.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already taken");
+        }
         Role userRole = roleRepo.findByName("USER")
                 .orElseThrow(() -> new IllegalStateException("Role USER not found"));
 
@@ -55,7 +58,6 @@ public class AccountService {
         return new AccountUserDetails(account);
     }
 
-
     public Account findByLogin(String login) {
         return accountRepo.findByLogin(login)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -64,5 +66,38 @@ public class AccountService {
     public Account getAccountFromUserDetails(AccountUserDetails userDetails) {
         return accountRepo.findById(userDetails.getId())
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
+    @Transactional
+    public void addRole(Long accountId, String roleName) {
+        Account account = accountRepo.findById(accountId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Role role = roleRepo.findByName(roleName.toUpperCase())
+                .orElseThrow(() -> new EntityNotFoundException("Role not found"));
+        account.getRoles().add(role);
+        accountRepo.save(account);
+        log.info("Role {} added to user {}", roleName, account.getLogin());
+    }
+
+    @Transactional
+    public void removeRole(Long accountId, String roleName) {
+        Account account = accountRepo.findById(accountId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Role role = roleRepo.findByName(roleName.toUpperCase())
+                .orElseThrow(() -> new EntityNotFoundException("Role not found"));
+        account.getRoles().remove(role);
+        accountRepo.save(account);
+        log.info("Role {} removed from user {}", roleName, account.getLogin());
+    }
+
+    @Transactional
+    public void addRoleByLogin(String login, String roleName) {
+        Account account = accountRepo.findByLogin(login)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Role role = roleRepo.findByName(roleName.toUpperCase())
+                .orElseThrow(() -> new EntityNotFoundException("Role not found"));
+        account.getRoles().add(role);
+        accountRepo.save(account);
+        log.info("Role {} added to user {}", roleName, account.getLogin());
     }
 }

@@ -28,6 +28,11 @@ paths:
           schema:
             type: string
             enum: [OPEN, CLOSED, IN_PROGRESS, COMPLETED]
+        - name: city
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -142,7 +147,7 @@ components:
 
     CreateCompetitionRequest:
       type: object
-      required: [title, disciplineId, datetime]
+      required: [title, disciplineId, datetime, tournamentSize, requiredTeamSize]
       properties:
         title:
           type: string
@@ -158,10 +163,18 @@ components:
         disciplineId:
           type: integer
           format: int64
+        tournamentSize:
+          type: integer
+          minimum: 2
+          description: Количество команд в турнире (степень двойки)
+        requiredTeamSize:
+          type: integer
+          minimum: 1
+          description: Минимальное количество участников в команде
 
     UpdateCompetitionRequest:
       type: object
-      required: [title, disciplineId, datetime]
+      required: [title, disciplineId, datetime, tournamentSize, requiredTeamSize]
       properties:
         title:
           type: string
@@ -176,3 +189,11 @@ components:
         disciplineId:
           type: integer
           format: int64
+        tournamentSize:
+          type: integer
+          minimum: 2
+          description: Количество команд в турнире (степень двойки)
+        requiredTeamSize:
+          type: integer
+          minimum: 1
+          description: Минимальное количество участников в команде
